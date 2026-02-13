@@ -26,8 +26,7 @@ class ValentineApp extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-// SPLASH SCREEN — first thing she sees
-// Tapping it starts the music and goes to the question page
+// SPLASH SCREEN — with Pre-loading logic
 // ─────────────────────────────────────────────
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -41,6 +40,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   web.HTMLAudioElement? _audioElement;
+  bool _isLoaded = false;
 
   @override
   void initState() {
@@ -56,11 +56,25 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Prepare audio but don't play yet — mobile requires user gesture first
+    // Prepare audio
     _audioElement = web.HTMLAudioElement()
       ..src = 'assets/assets/secondhand.mp3'
       ..loop = true
       ..volume = 0.5;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pre-cache the background image before moving to the next page
+    precacheImage(const AssetImage('assets/girlfriend_photo.jpg'), context)
+        .then((_) {
+      if (mounted) {
+        setState(() {
+          _isLoaded = true;
+        });
+      }
+    });
   }
 
   @override
@@ -70,7 +84,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _onTap() {
-    // Start music on user gesture — guaranteed to work on mobile
+    if (!_isLoaded) return; // Ignore taps if image isn't ready
+
     _audioElement?.play();
 
     Navigator.pushReplacement(
@@ -134,34 +149,67 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
               const SizedBox(height: 60),
-              // Tap prompt
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.white54, width: 1.5),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.touch_app, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Tap to open',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+
+              // Switch between Loader and Button
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 500),
+                child: _isLoaded ? _buildOpenButton() : _buildLoadingState(),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Column(
+      key: const ValueKey('loading'),
+      children: [
+        const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Preparing your surprise...',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+            fontSize: 16,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOpenButton() {
+    return Container(
+      key: const ValueKey('open_button'),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white54, width: 1.5),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.touch_app, color: Colors.white, size: 20),
+          SizedBox(width: 8),
+          Text(
+            'Tap to open',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -191,8 +239,7 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
   }
 
   Future<void> _sendTelegramNotification() async {
-    const String workerUrl =
-        'https://hellofaith.bankolescripted.workers.dev';
+    const String workerUrl = 'https://hellofaith.bankolescripted.workers.dev';
     try {
       await http.post(
         Uri.parse(workerUrl),
@@ -243,22 +290,21 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
 
           return Stack(
             children: [
-              // Background image
+              // Background image - now cached
               Positioned.fill(
                 child: Image.asset(
                   'assets/girlfriend_photo.jpg',
                   fit: BoxFit.cover,
+                  gaplessPlayback: true,
                 ),
               ),
 
-              // Dark overlay
               Positioned.fill(
                 child: Container(
                   color: Colors.black.withOpacity(0.35),
                 ),
               ),
 
-              // Card
               Center(
                 child: Container(
                   constraints: BoxConstraints(maxWidth: cardMaxWidth),
@@ -318,7 +364,6 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
                 ),
               ),
 
-              // No button — floats around the screen
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 400),
                 curve: Curves.easeOut,
@@ -359,7 +404,7 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
 }
 
 // ─────────────────────────────────────────────
-// YES RESPONSE PAGE — emoji bubbles animation
+// YES RESPONSE PAGE
 // ─────────────────────────────────────────────
 class YesResponsePage extends StatefulWidget {
   const YesResponsePage({Key? key}) : super(key: key);
@@ -446,7 +491,6 @@ class _YesResponsePageState extends State<YesResponsePage>
             ),
             child: Stack(
               children: [
-                // Floating emoji particles
                 ..._particles.map((particle) {
                   return AnimatedBuilder(
                     animation: particle.controller,
@@ -477,8 +521,6 @@ class _YesResponsePageState extends State<YesResponsePage>
                     },
                   );
                 }),
-
-                // Center content
                 Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
