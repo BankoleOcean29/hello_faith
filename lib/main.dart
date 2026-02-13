@@ -4,6 +4,7 @@ import 'package:web/web.dart' as web;
 import 'dart:js_interop';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   runApp(const ValentineApp());
@@ -485,7 +486,7 @@ class _YesResponsePageState extends State<YesResponsePage>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '🥰',
+                        '❤️',
                         style: TextStyle(fontSize: isMobile ? 80 : 100),
                       ),
                       const SizedBox(height: 24),
@@ -511,7 +512,7 @@ class _YesResponsePageState extends State<YesResponsePage>
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: isMobile ? 18 : 24,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.brown.withOpacity(0.9),
                         ),
                       ),
                     ],
