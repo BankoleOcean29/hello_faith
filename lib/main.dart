@@ -483,13 +483,18 @@ class _YesResponsePageState extends State<YesResponsePage> with TickerProviderSt
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xffFBF5F3), Color(0xffCE4760), Color(0xffDB5461)],
+                colors: [
+                  Color(0xffFBF5F3),
+                  Color(0xffCE4760),
+                  Color(0xffDB5461)
+                ],
               ),
             ),
             child: Stack(
               children: [
                 // Particle layer
-                ..._particles.map((particle) => _buildParticle(particle, constraints)),
+                ..._particles.map((particle) =>
+                    _buildParticle(particle, constraints)),
 
                 // Content layer
                 SafeArea(
@@ -511,7 +516,8 @@ class _YesResponsePageState extends State<YesResponsePage> with TickerProviderSt
                                 'Of all the lives I could have lived,\nall the rooms I could have walked into,\n\n'
                                 'I’m grateful\nthe universe let me walk into you.',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.parisienne( // Using the romantic font we discussed
+                            style: GoogleFonts
+                                .parisienne( // Using the romantic font we discussed
                               fontSize: isMobile ? 24 : 36,
                               height: 1.4,
                               fontWeight: FontWeight.w600,
@@ -537,9 +543,10 @@ class _YesResponsePageState extends State<YesResponsePage> with TickerProviderSt
         },
       ),
     );
-  }
+  }}
 
-class EmojiParticle {
+
+  class EmojiParticle {
   final String emoji;
   final double startX;
   final double size;
