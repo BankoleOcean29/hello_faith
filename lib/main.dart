@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:web/web.dart' as web;
-import 'dart:js_interop';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   runApp(const ValentineApp());
