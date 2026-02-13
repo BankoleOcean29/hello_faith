@@ -59,7 +59,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Prepare audio but don't play yet — mobile requires user gesture first
     _audioElement = web.HTMLAudioElement()
-      ..src = 'assets/assets/love_song.mp3'
+      ..src = 'assets/assets/secondhand.mp3'
       ..loop = true
       ..volume = 0.5;
   }
@@ -125,7 +125,7 @@ class _SplashScreenState extends State<SplashScreen>
               ),
               const SizedBox(height: 40),
               const Text(
-                'I have something\nto ask you... 🥺',
+                'Hello Brown Sugar',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 28,
@@ -507,7 +507,7 @@ class _YesResponsePageState extends State<YesResponsePage>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Happy Valentine\'s Day! 💕',
+                        'I know paradise exists because of you',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: isMobile ? 18 : 24,
