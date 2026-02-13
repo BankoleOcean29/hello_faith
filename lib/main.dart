@@ -409,6 +409,9 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
 // ─────────────────────────────────────────────
 // YES RESPONSE PAGE
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// YES RESPONSE PAGE
+// ─────────────────────────────────────────────
 class YesResponsePage extends StatefulWidget {
   const YesResponsePage({Key? key}) : super(key: key);
 
@@ -447,7 +450,7 @@ class _YesResponsePageState extends State<YesResponsePage> with TickerProviderSt
     final particle = EmojiParticle(
       emoji: _emojis[random.nextInt(_emojis.length)],
       startX: random.nextDouble(),
-      size: 16 + random.nextDouble() * 24, // Slightly smaller for mobile
+      size: 16 + random.nextDouble() * 24,
       swayAmount: 0.05 + random.nextDouble() * 0.08,
       swayOffset: random.nextDouble() * 2 * pi,
       controller: controller,
@@ -465,8 +468,36 @@ class _YesResponsePageState extends State<YesResponsePage> with TickerProviderSt
   @override
   void dispose() {
     _spawnController.dispose();
-    for (final p in _particles) { p.controller.dispose(); }
+    for (final p in _particles) {
+      p.controller.dispose();
+    }
     super.dispose();
+  }
+
+  // HELPER METHOD TO BUILD PARTICLES
+  Widget _buildParticle(EmojiParticle particle, BoxConstraints constraints) {
+    return AnimatedBuilder(
+      animation: particle.controller,
+      builder: (context, child) {
+        final progress = particle.controller.value;
+        final sway = sin(progress * 4 * pi + particle.swayOffset) * particle.swayAmount;
+        final x = (particle.startX + sway).clamp(0.0, 1.0) * constraints.maxWidth;
+        final y = constraints.maxHeight * (1.0 - progress) - particle.size;
+        final opacity = progress < 0.8 ? 1.0 : 1.0 - ((progress - 0.8) / 0.2);
+
+        return Positioned(
+          left: x,
+          top: y,
+          child: Opacity(
+            opacity: opacity.clamp(0.0, 1.0),
+            child: Text(
+              particle.emoji,
+              style: TextStyle(fontSize: particle.size),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -483,20 +514,12 @@ class _YesResponsePageState extends State<YesResponsePage> with TickerProviderSt
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xffFBF5F3),
-                  Color(0xffCE4760),
-                  Color(0xffDB5461)
-                ],
+                colors: [Color(0xffFBF5F3), Color(0xffCE4760), Color(0xffDB5461)],
               ),
             ),
             child: Stack(
               children: [
-                // Particle layer
-                ..._particles.map((particle) =>
-                    _buildParticle(particle, constraints)),
-
-                // Content layer
+                ..._particles.map((particle) => _buildParticle(particle, constraints)),
                 SafeArea(
                   child: Center(
                     child: SingleChildScrollView(
@@ -516,8 +539,7 @@ class _YesResponsePageState extends State<YesResponsePage> with TickerProviderSt
                                 'Of all the lives I could have lived,\nall the rooms I could have walked into,\n\n'
                                 'I’m grateful\nthe universe let me walk into you.',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts
-                                .parisienne( // Using the romantic font we discussed
+                            style: GoogleFonts.parisienne(
                               fontSize: isMobile ? 24 : 36,
                               height: 1.4,
                               fontWeight: FontWeight.w600,
@@ -543,10 +565,10 @@ class _YesResponsePageState extends State<YesResponsePage> with TickerProviderSt
         },
       ),
     );
-  }}
+  }
+} // End of _YesResponsePageState
 
-
-  class EmojiParticle {
+class EmojiParticle {
   final String emoji;
   final double startX;
   final double size;
