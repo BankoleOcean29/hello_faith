@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import 'package:web/web.dart' as web;
 import 'dart:convert';
@@ -17,7 +18,9 @@ class ValentineApp extends StatelessWidget {
       title: 'Be My Valentine',
       theme: ThemeData(
         primarySwatch: Colors.pink,
-        fontFamily: 'serif',
+        textTheme: GoogleFonts.playfairDisplayTextTheme(
+          Theme.of(context).textTheme,
+        )
       ),
       debugShowCheckedModeBanner: false,
       home: const SplashScreen(),
@@ -176,7 +179,7 @@ class _SplashScreenState extends State<SplashScreen>
         ),
         const SizedBox(height: 12),
         Text(
-          'Preparing your surprise...',
+          'just a second...',
           style: TextStyle(
             color: Colors.white.withOpacity(0.7),
             fontSize: 16,
@@ -479,13 +482,14 @@ class _YesResponsePageState extends State<YesResponsePage>
 
           return Container(
             decoration: BoxDecoration(
+              //color: Color(0xff04395E),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.pink.shade200,
-                  Colors.red.shade300,
-                  Colors.pink.shade400,
+                  Color(0xffFBF5F3),
+                  Color(0xffCE4760),
+                  Color(0xffDB5461),
                 ],
               ),
             ),
@@ -531,7 +535,14 @@ class _YesResponsePageState extends State<YesResponsePage>
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Yay! She said YES!',
+                        'If love were noise,\n'
+                        'you’d be the quiet that makes it music.\n'
+                        'If time were heavy,\n'
+                        'you’d be the reason I don’t feel the weight.\n'
+                        'Of all the lives I could have lived,\n'
+                        'all the rooms I could have walked into,\n'
+                            'I’m grateful\n'
+                      'the universe let me walk into you.\n',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: isMobile ? 30 : 42,
@@ -547,14 +558,7 @@ class _YesResponsePageState extends State<YesResponsePage>
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'I know paradise exists because of you',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: isMobile ? 18 : 24,
-                          color: Colors.brown.withOpacity(0.9),
-                        ),
-                      ),
+
                     ],
                   ),
                 ),
