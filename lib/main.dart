@@ -97,22 +97,17 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
   }
 
   Future<void> _sendTelegramNotification() async {
-    const String botToken = '8331865830:AAEGZMcZqpV6AvFuEWSnzvMAKoxGUjN8kqw'; // Replace with your token
-    const String chatId = '935512931';
+    const String workerUrl = 'https://hellofaith.bankolescripted.workers.dev';
 
-    final url = Uri.parse(
-      'https://api.telegram.org/bot$botToken/sendMessage',
-    );
-
-    await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'chat_id': chatId,
-        'text': '🎉❤️ She said YES! Happy Valentine\'s Day! 💕',
-        'parse_mode': 'HTML',
-      }),
-    );
+    try {
+      await http.post(
+        Uri.parse(workerUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'notify': true}),
+      );
+    } catch (e) {
+      // Fail silently — don't interrupt her experience
+    }
   }
 
   @override
@@ -291,8 +286,77 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
 }
 
 // Placeholder for the Yes response page
-class YesResponsePage extends StatelessWidget {
+class YesResponsePage extends StatefulWidget {
   const YesResponsePage({Key? key}) : super(key: key);
+
+  @override
+  State<YesResponsePage> createState() => _YesResponsePageState();
+}
+
+class _YesResponsePageState extends State<YesResponsePage>
+    with TickerProviderStateMixin {
+  final Random random = Random();
+  final List<EmojiParticle> _particles = [];
+  late AnimationController _spawnController;
+
+  final List<String> _emojis = ['❤️', '💕', '💖', '💗', '💓', '💝', '😍', '🥰'];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Spawn a new emoji every 300ms
+    _spawnController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _spawnParticle();
+        _spawnController.reset();
+        _spawnController.forward();
+      }
+    });
+
+    _spawnController.forward();
+  }
+
+  void _spawnParticle() {
+    if (!mounted) return;
+    final controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 2500 + random.nextInt(2000)),
+    );
+
+    final particle = EmojiParticle(
+      emoji: _emojis[random.nextInt(_emojis.length)],
+      startX: random.nextDouble(),
+      size: 24 + random.nextDouble() * 32,
+      swayAmount: 0.05 + random.nextDouble() * 0.08,
+      swayOffset: random.nextDouble() * 2 * pi,
+      controller: controller,
+    );
+
+    controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (mounted) {
+          setState(() => _particles.remove(particle));
+        }
+        controller.dispose();
+      }
+    });
+
+    setState(() => _particles.add(particle));
+    controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _spawnController.dispose();
+    for (final p in _particles) {
+      p.controller.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -301,58 +365,119 @@ class YesResponsePage extends StatelessWidget {
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 600;
 
-          final iconSize = isMobile ? 80.0 : 100.0;
-          final titleFontSize = isMobile ? 36.0 : 48.0;
-          final textFontSize = isMobile ? 18.0 : 24.0;
-          final horizontalPadding = isMobile ? 24.0 : 40.0;
-
           return Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.pink.shade300,
-                  Colors.red.shade400,
+                  Colors.pink.shade200,
+                  Colors.red.shade300,
+                  Colors.pink.shade400,
                 ],
               ),
             ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.favorite,
-                    color: Colors.white,
-                    size: iconSize,
-                  ),
-                  const SizedBox(height: 30),
-                  Text(
-                    'Yay! 🎉',
-                    style: TextStyle(
-                      fontSize: titleFontSize,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                    child: Text(
-                      'This is a placeholder page.\nYou can design this later!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: textFontSize,
-                        color: Colors.white,
+            child: Stack(
+              children: [
+                // Floating emoji particles
+                ..._particles.map((particle) {
+                  return AnimatedBuilder(
+                    animation: particle.controller,
+                    builder: (context, child) {
+                      final progress = particle.controller.value;
+                      // Sway left and right as it rises
+                      final sway = sin(progress * 4 * pi + particle.swayOffset) *
+                          particle.swayAmount;
+                      final x = (particle.startX + sway)
+                          .clamp(0.0, 1.0) *
+                          constraints.maxWidth;
+                      // Start from bottom, float to top
+                      final y = constraints.maxHeight * (1.0 - progress) -
+                          particle.size;
+                      // Fade out near the top
+                      final opacity = progress < 0.8
+                          ? 1.0
+                          : 1.0 - ((progress - 0.8) / 0.2);
+
+                      return Positioned(
+                        left: x,
+                        top: y,
+                        child: Opacity(
+                          opacity: opacity.clamp(0.0, 1.0),
+                          child: Text(
+                            particle.emoji,
+                            style: TextStyle(fontSize: particle.size),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }),
+
+                // Center content
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '🥰',
+                        style: TextStyle(
+                          fontSize: isMobile ? 80 : 100,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Yayyyyyyyyy!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: isMobile ? 30 : 42,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: Colors.pink.shade900.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'I understand why God created the concept \n'
+                            'of a treasure because you exist 💕',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: isMobile ? 18 : 24,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },
       ),
     );
   }
+}
+
+class EmojiParticle {
+  final String emoji;
+  final double startX;
+  final double size;
+  final double swayAmount;
+  final double swayOffset;
+  final AnimationController controller;
+
+  EmojiParticle({
+    required this.emoji,
+    required this.startX,
+    required this.size,
+    required this.swayAmount,
+    required this.swayOffset,
+    required this.controller,
+  });
 }
