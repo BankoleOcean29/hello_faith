@@ -1,9 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'dart:math';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
+import 'dart:js_interop';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 void main() {
@@ -22,83 +21,179 @@ class ValentineApp extends StatelessWidget {
         fontFamily: 'serif',
       ),
       debugShowCheckedModeBanner: false,
-      home: const ValentineQuestionPage(),
+      home: const SplashScreen(),
     );
   }
 }
 
+// ─────────────────────────────────────────────
+// SPLASH SCREEN — first thing she sees
+// Tapping it starts the music and goes to the question page
+// ─────────────────────────────────────────────
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  web.HTMLAudioElement? _audioElement;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Pulsing heart animation
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Prepare audio but don't play yet — mobile requires user gesture first
+    _audioElement = web.HTMLAudioElement()
+      ..src = 'assets/assets/love_song.mp3'
+      ..loop = true
+      ..volume = 0.5;
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _onTap() {
+    // Start music on user gesture — guaranteed to work on mobile
+    _audioElement?.play();
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) =>
+            ValentineQuestionPage(audioElement: _audioElement),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 800),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: GestureDetector(
+        onTap: _onTap,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.pink.shade900,
+                Colors.pink.shade600,
+                Colors.red.shade400,
+              ],
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Pulsing heart
+              AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _pulseAnimation.value,
+                    child: const Icon(
+                      Icons.favorite,
+                      color: Colors.white,
+                      size: 100,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 40),
+              const Text(
+                'I have something\nto ask you... 🥺',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 60),
+              // Tap prompt
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white54, width: 1.5),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.touch_app, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Tap to open',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// QUESTION PAGE
+// ─────────────────────────────────────────────
 class ValentineQuestionPage extends StatefulWidget {
-  const ValentineQuestionPage({Key? key}) : super(key: key);
+  final web.HTMLAudioElement? audioElement;
+  const ValentineQuestionPage({Key? key, this.audioElement}) : super(key: key);
 
   @override
   State<ValentineQuestionPage> createState() => _ValentineQuestionPageState();
 }
 
 class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
-  double noButtonTop = 0.6;
-  double noButtonLeft = 0.6;
+  double noButtonTop = 0.65;
+  double noButtonLeft = 0.55;
   final Random random = Random();
-  html.AudioElement? _audioElement;
-  bool _musicStarted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initAudio();
-  }
-
-  @override
-  void dispose() {
-    _audioElement?.pause();
-    _audioElement = null;
-    super.dispose();
-  }
-
-  void _initAudio() {
-    _audioElement = html.AudioElement()
-      ..src = 'assets/assets/secondhand.mp3' // Flutter web serves assets at this path
-      ..loop = true
-      ..volume = 0.5;
-
-    // Try autoplay first
-    _audioElement!.play().then((_) {
-      setState(() => _musicStarted = true);
-    }).catchError((_) {
-      // Autoplay was blocked by browser — will start on first user tap
-      setState(() => _musicStarted = false);
-    });
-  }
-
-  void _startMusicOnGesture() {
-    if (!_musicStarted) {
-      _audioElement?.play().then((_) {
-        setState(() => _musicStarted = true);
-      });
-    }
-  }
 
   void moveNoButton() {
-    _startMusicOnGesture();
     setState(() {
-      noButtonTop = 0.2 + random.nextDouble() * 0.6;
-      noButtonLeft = 0.1 + random.nextDouble() * 0.7;
+      noButtonTop = 0.15 + random.nextDouble() * 0.65;
+      noButtonLeft = 0.05 + random.nextDouble() * 0.65;
     });
-  }
-
-  void onYesPressed() {
-    _startMusicOnGesture();
-    _sendTelegramNotification();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const YesResponsePage(),
-      ),
-    );
   }
 
   Future<void> _sendTelegramNotification() async {
-    const String workerUrl = 'https://hellofaith.bankolescripted.workers.dev';
-
+    const String workerUrl =
+        'https://hellofaith.bankolescripted.workers.dev';
     try {
       await http.post(
         Uri.parse(workerUrl),
@@ -106,8 +201,22 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
         body: jsonEncode({'notify': true}),
       );
     } catch (e) {
-      // Fail silently — don't interrupt her experience
+      // Fail silently
     }
+  }
+
+  void onYesPressed() {
+    _sendTelegramNotification();
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const YesResponsePage(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 600),
+      ),
+    );
   }
 
   @override
@@ -115,23 +224,23 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // Determine if we're on mobile or web
           final isMobile = constraints.maxWidth < 600;
-          final isTablet = constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
+          final isTablet =
+              constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
 
-          // Responsive sizing
-          final cardMaxWidth = isMobile ? constraints.maxWidth * 0.9 : (isTablet ? 500.0 : 600.0);
-          final cardPadding = isMobile ? 24.0 : 40.0;
-          final cardMargin = isMobile ? 16.0 : 20.0;
-          final heartSize = isMobile ? 60.0 : 80.0;
-          final questionFontSize = isMobile ? 24.0 : 32.0;
-          final buttonFontSize = isMobile ? 20.0 : 24.0;
-          final yesButtonPaddingH = isMobile ? 40.0 : 60.0;
-          final yesButtonPaddingV = isMobile ? 16.0 : 20.0;
-          final noButtonPaddingH = isMobile ? 30.0 : 40.0;
-          final noButtonPaddingV = isMobile ? 12.0 : 15.0;
-          final noButtonFontSize = isMobile ? 18.0 : 20.0;
-          final spacing = isMobile ? 30.0 : 50.0;
+          final cardMaxWidth = isMobile
+              ? constraints.maxWidth * 0.88
+              : (isTablet ? 500.0 : 600.0);
+          final cardPadding = isMobile ? 20.0 : 40.0;
+          final heartSize = isMobile ? 48.0 : 80.0;
+          final questionFontSize = isMobile ? 20.0 : 32.0;
+          final buttonFontSize = isMobile ? 15.0 : 24.0;
+          final yesButtonPaddingH = isMobile ? 28.0 : 60.0;
+          final yesButtonPaddingV = isMobile ? 12.0 : 20.0;
+          final noButtonPaddingH = isMobile ? 20.0 : 40.0;
+          final noButtonPaddingV = isMobile ? 10.0 : 15.0;
+          final noButtonFontSize = isMobile ? 13.0 : 20.0;
+          final spacing = isMobile ? 20.0 : 50.0;
 
           return Stack(
             children: [
@@ -143,18 +252,18 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
                 ),
               ),
 
-              // Dark overlay for better text visibility
+              // Dark overlay
               Positioned.fill(
                 child: Container(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withOpacity(0.35),
                 ),
               ),
 
-              // Main content
+              // Card
               Center(
                 child: Container(
                   constraints: BoxConstraints(maxWidth: cardMaxWidth),
-                  margin: EdgeInsets.all(cardMargin),
+                  margin: EdgeInsets.all(isMobile ? 16.0 : 20.0),
                   padding: EdgeInsets.all(cardPadding),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.95),
@@ -170,12 +279,8 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.favorite,
-                        color: Colors.pink,
-                        size: heartSize,
-                      ),
-                      SizedBox(height: isMobile ? 20 : 30),
+                      Icon(Icons.favorite, color: Colors.pink, size: heartSize),
+                      SizedBox(height: isMobile ? 16 : 30),
                       Text(
                         'Will you please be my valentine?',
                         textAlign: TextAlign.center,
@@ -214,69 +319,38 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
                 ),
               ),
 
-              // No button (moves around)
+              // No button — floats around the screen
               AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 400),
                 curve: Curves.easeOut,
-                top: MediaQuery.of(context).size.height * noButtonTop,
-                left: MediaQuery.of(context).size.width * noButtonLeft,
+                top: constraints.maxHeight * noButtonTop,
+                left: constraints.maxWidth * noButtonLeft,
                 child: MouseRegion(
                   onEnter: (_) => moveNoButton(),
-                  child: GestureDetector(
-                    onTap: moveNoButton,
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade300,
-                        foregroundColor: Colors.black54,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: noButtonPaddingH,
-                          vertical: noButtonPaddingV,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        elevation: 3,
+                  child: ElevatedButton(
+                    onPressed: moveNoButton,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade300,
+                      foregroundColor: Colors.black54,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: noButtonPaddingH,
+                        vertical: noButtonPaddingV,
                       ),
-                      child: Text(
-                        'No',
-                        style: TextStyle(
-                          fontSize: noButtonFontSize,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      elevation: 3,
+                    ),
+                    child: Text(
+                      'No',
+                      style: TextStyle(
+                        fontSize: noButtonFontSize,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
               ),
-
-              // Subtle music hint if autoplay was blocked
-              if (!_musicStarted)
-                Positioned(
-                  bottom: 20,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.music_note, color: Colors.white, size: 16),
-                          SizedBox(width: 6),
-                          Text(
-                            'Tap anywhere to play music 🎵',
-                            style: TextStyle(color: Colors.white, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
             ],
           );
         },
@@ -285,7 +359,9 @@ class _ValentineQuestionPageState extends State<ValentineQuestionPage> {
   }
 }
 
-// Placeholder for the Yes response page
+// ─────────────────────────────────────────────
+// YES RESPONSE PAGE — emoji bubbles animation
+// ─────────────────────────────────────────────
 class YesResponsePage extends StatefulWidget {
   const YesResponsePage({Key? key}) : super(key: key);
 
@@ -304,8 +380,6 @@ class _YesResponsePageState extends State<YesResponsePage>
   @override
   void initState() {
     super.initState();
-
-    // Spawn a new emoji every 300ms
     _spawnController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -316,7 +390,6 @@ class _YesResponsePageState extends State<YesResponsePage>
         _spawnController.forward();
       }
     });
-
     _spawnController.forward();
   }
 
@@ -326,7 +399,6 @@ class _YesResponsePageState extends State<YesResponsePage>
       vsync: this,
       duration: Duration(milliseconds: 2500 + random.nextInt(2000)),
     );
-
     final particle = EmojiParticle(
       emoji: _emojis[random.nextInt(_emojis.length)],
       startX: random.nextDouble(),
@@ -335,16 +407,12 @@ class _YesResponsePageState extends State<YesResponsePage>
       swayOffset: random.nextDouble() * 2 * pi,
       controller: controller,
     );
-
     controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        if (mounted) {
-          setState(() => _particles.remove(particle));
-        }
+        if (mounted) setState(() => _particles.remove(particle));
         controller.dispose();
       }
     });
-
     setState(() => _particles.add(particle));
     controller.forward();
   }
@@ -385,16 +453,13 @@ class _YesResponsePageState extends State<YesResponsePage>
                     animation: particle.controller,
                     builder: (context, child) {
                       final progress = particle.controller.value;
-                      // Sway left and right as it rises
-                      final sway = sin(progress * 4 * pi + particle.swayOffset) *
-                          particle.swayAmount;
-                      final x = (particle.startX + sway)
-                          .clamp(0.0, 1.0) *
+                      final sway =
+                          sin(progress * 4 * pi + particle.swayOffset) *
+                              particle.swayAmount;
+                      final x = (particle.startX + sway).clamp(0.0, 1.0) *
                           constraints.maxWidth;
-                      // Start from bottom, float to top
                       final y = constraints.maxHeight * (1.0 - progress) -
                           particle.size;
-                      // Fade out near the top
                       final opacity = progress < 0.8
                           ? 1.0
                           : 1.0 - ((progress - 0.8) / 0.2);
@@ -421,13 +486,11 @@ class _YesResponsePageState extends State<YesResponsePage>
                     children: [
                       Text(
                         '🥰',
-                        style: TextStyle(
-                          fontSize: isMobile ? 80 : 100,
-                        ),
+                        style: TextStyle(fontSize: isMobile ? 80 : 100),
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Yayyyyyyyyy!',
+                        'Yay! She said YES!',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: isMobile ? 30 : 42,
@@ -444,8 +507,7 @@ class _YesResponsePageState extends State<YesResponsePage>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'I understand why God created the concept \n'
-                            'of a treasure because you exist 💕',
+                        'Happy Valentine\'s Day! 💕',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: isMobile ? 18 : 24,
