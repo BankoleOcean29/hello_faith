@@ -416,12 +416,10 @@ class YesResponsePage extends StatefulWidget {
   State<YesResponsePage> createState() => _YesResponsePageState();
 }
 
-class _YesResponsePageState extends State<YesResponsePage>
-    with TickerProviderStateMixin {
+class _YesResponsePageState extends State<YesResponsePage> with TickerProviderStateMixin {
   final Random random = Random();
   final List<EmojiParticle> _particles = [];
   late AnimationController _spawnController;
-
   final List<String> _emojis = ['❤️', '💕', '💖', '💗', '💓', '💝', '😍', '🥰'];
 
   @override
@@ -449,7 +447,7 @@ class _YesResponsePageState extends State<YesResponsePage>
     final particle = EmojiParticle(
       emoji: _emojis[random.nextInt(_emojis.length)],
       startX: random.nextDouble(),
-      size: 24 + random.nextDouble() * 32,
+      size: 16 + random.nextDouble() * 24, // Slightly smaller for mobile
       swayAmount: 0.05 + random.nextDouble() * 0.08,
       swayOffset: random.nextDouble() * 2 * pi,
       controller: controller,
@@ -467,9 +465,7 @@ class _YesResponsePageState extends State<YesResponsePage>
   @override
   void dispose() {
     _spawnController.dispose();
-    for (final p in _particles) {
-      p.controller.dispose();
-    }
+    for (final p in _particles) { p.controller.dispose(); }
     super.dispose();
   }
 
@@ -481,85 +477,58 @@ class _YesResponsePageState extends State<YesResponsePage>
           final isMobile = constraints.maxWidth < 600;
 
           return Container(
-            decoration: BoxDecoration(
-              //color: Color(0xff04395E),
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xffFBF5F3),
-                  Color(0xffCE4760),
-                  Color(0xffDB5461),
-                ],
+                colors: [Color(0xffFBF5F3), Color(0xffCE4760), Color(0xffDB5461)],
               ),
             ),
             child: Stack(
               children: [
-                ..._particles.map((particle) {
-                  return AnimatedBuilder(
-                    animation: particle.controller,
-                    builder: (context, child) {
-                      final progress = particle.controller.value;
-                      final sway =
-                          sin(progress * 4 * pi + particle.swayOffset) *
-                              particle.swayAmount;
-                      final x = (particle.startX + sway).clamp(0.0, 1.0) *
-                          constraints.maxWidth;
-                      final y = constraints.maxHeight * (1.0 - progress) -
-                          particle.size;
-                      final opacity = progress < 0.8
-                          ? 1.0
-                          : 1.0 - ((progress - 0.8) / 0.2);
+                // Particle layer
+                ..._particles.map((particle) => _buildParticle(particle, constraints)),
 
-                      return Positioned(
-                        left: x,
-                        top: y,
-                        child: Opacity(
-                          opacity: opacity.clamp(0.0, 1.0),
-                          child: Text(
-                            particle.emoji,
-                            style: TextStyle(fontSize: particle.size),
+                // Content layer
+                SafeArea(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '❤️',
+                            style: TextStyle(fontSize: isMobile ? 60 : 100),
                           ),
-                        ),
-                      );
-                    },
-                  );
-                }),
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '❤️',
-                        style: TextStyle(fontSize: isMobile ? 80 : 100),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'If love were noise,\n'
-                        'you’d be the quiet that makes it music.\n'
-                        'If time were heavy,\n'
-                        'you’d be the reason I don’t feel the weight.\n'
-                        'Of all the lives I could have lived,\n'
-                        'all the rooms I could have walked into,\n'
-                            'I’m grateful\n'
-                      'the universe let me walk into you.\n',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: isMobile ? 30 : 42,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: Colors.pink.shade900.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                          const SizedBox(height: 20),
+                          Text(
+                            'If love were noise,\nyou’d be the quiet that makes it music.\n\n'
+                                'If time were heavy,\nyou’d be the reason I don’t feel the weight.\n\n'
+                                'Of all the lives I could have lived,\nall the rooms I could have walked into,\n\n'
+                                'I’m grateful\nthe universe let me walk into you.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.parisienne( // Using the romantic font we discussed
+                              fontSize: isMobile ? 24 : 36,
+                              height: 1.4,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 40),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -569,7 +538,6 @@ class _YesResponsePageState extends State<YesResponsePage>
       ),
     );
   }
-}
 
 class EmojiParticle {
   final String emoji;
